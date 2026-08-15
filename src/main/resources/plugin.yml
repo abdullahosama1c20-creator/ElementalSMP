@@ -1,24 +1,33 @@
-name: ElementalSMP
-version: ${project.version}
-main: com.bloxelemental.elemental.ElementalSMP
-api-version: '1.21'
-author: BloxElementalTeam
-description: Blox Fruits inspired elemental mastery and awakening system for Paper SMPs.
-
+name: UtilityPvP
+version: 1.0.0
+main: com.example.utilitypvp.UtilityPvP
+api-version: '26.2'
+author: Example
+website: https://github.com/yourname/utilitypvp
+description: Player utilities and PvP combat management for Paper.
 commands:
-  element:
-    description: Open the starter element selection GUI.
-    usage: /element gui
-  elemental:
-    description: Admin management for the elemental system.
-    usage: /elemental <inspect|setlevel|setelement|giveitem|announce>
-    permission: elemental.admin
-    permission-message: You do not have permission to use elemental admin commands.
-
-permissions:
-  elemental.admin:
-    description: Allows use of all /elemental admin subcommands.
-    default: op
-  elemental.use:
-    description: Allows use of elemental abilities and the element selection GUI.
-    default: true
+  sethome:
+    description: Set a named home.
+    usage: /sethome [name]
+  home:
+    description: Teleport to a named home.
+    usage: /home [name]
+  delhome:
+    description: Delete a named home.
+    usage: /delhome [name]
+  tpa:
+    description: Request to teleport to another player.
+    usage: /tpa <player>
+  tpaccept:
+    description: Accept the latest incoming teleport request.
+    usage: /tpaccept
+  tpdeny:
+    description: Deny the latest incoming teleport request.
+    usage: /tpdeny
+  spawn:
+    description: Teleport to world spawn.
+    usage: /spawn
+  settings:
+    description: Open your personal settings menu.
+    usage: /settings
+    aliases: [setting]
