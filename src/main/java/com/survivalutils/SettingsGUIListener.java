@@ -49,7 +49,7 @@ public class SettingsGUIListener implements Listener {
         Inventory inventory = Bukkit.createInventory(new SettingsGuiHolder(), 36,
                 Component.text("Settings", NamedTextColor.GOLD, TextDecoration.BOLD));
 
-        ItemStack filler = namedItem(Material.GRAY_STAINED_GLASS_PANE, Component.text(" "));
+        ItemStack filler = namedItem(Material.BLACK_STAINED_GLASS_PANE, Component.text(" "));
         for (int i = 0; i < 36; i++) {
             inventory.setItem(i, filler);
         }
@@ -67,12 +67,16 @@ public class SettingsGUIListener implements Listener {
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(slot.title(), enabled ? NamedTextColor.GREEN : NamedTextColor.RED, TextDecoration.BOLD));
         meta.lore(List.of(
-                Component.text(slot.description(), NamedTextColor.GRAY),
+                Component.text(slot.description(), NamedTextColor.WHITE),
                 Component.text(""),
                 Component.text("Status: ", NamedTextColor.GRAY)
-                        .append(Component.text(enabled ? "ENABLED" : "DISABLED", enabled ? NamedTextColor.GREEN : NamedTextColor.RED)),
-                Component.text("Click to toggle", NamedTextColor.DARK_GRAY)
+                        .append(Component.text(enabled ? "ENABLED" : "DISABLED", enabled ? NamedTextColor.GREEN : NamedTextColor.RED, TextDecoration.BOLD)),
+                Component.text("Click to toggle", NamedTextColor.YELLOW)
         ));
+        if (enabled) {
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+        }
         item.setItemMeta(meta);
         return item;
     }

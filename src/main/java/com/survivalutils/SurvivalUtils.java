@@ -11,6 +11,7 @@ public final class SurvivalUtils extends JavaPlugin {
     private RulesManager rulesManager;
     private TeleportWarmupManager teleportWarmupManager;
     private ScoreboardManager scoreboardManager;
+    private DuelManager duelManager;
 
     @Override
     public void onEnable() {
@@ -25,6 +26,7 @@ public final class SurvivalUtils extends JavaPlugin {
 
         combatManager = new CombatManager();
         tpaManager = new TpaManager(this);
+        duelManager = new DuelManager(this);
         teleportWarmupManager = new TeleportWarmupManager(this);
         scoreboardManager = new ScoreboardManager(this);
         scoreboardManager.start();
@@ -34,6 +36,7 @@ public final class SurvivalUtils extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SettingsGUIListener(this), this);
         getServer().getPluginManager().registerEvents(new ChatVisibilityListener(this), this);
         getServer().getPluginManager().registerEvents(new JoinListener(this), this);
+        getServer().getPluginManager().registerEvents(new DuelListener(this), this);
 
         HomeCommands homeCommands = new HomeCommands(this);
         getCommand("sethome").setExecutor(homeCommands);
@@ -52,6 +55,13 @@ public final class SurvivalUtils extends JavaPlugin {
         getCommand("spawn").setExecutor(new SpawnCommand(this));
         getCommand("rules").setExecutor(new RulesCommand(this));
         getCommand("/rules").setExecutor(new RulesEditCommand(this));
+
+        DuelCommands duelCommands = new DuelCommands(this);
+        getCommand("duel").setExecutor(duelCommands);
+        getCommand("duel").setTabCompleter(duelCommands);
+        getCommand("duelaccept").setExecutor(duelCommands);
+        getCommand("dueldeny").setExecutor(duelCommands);
+        getCommand("duelcancel").setExecutor(duelCommands);
 
         getLogger().info("SurvivalUtils has been enabled.");
     }
@@ -96,5 +106,9 @@ public final class SurvivalUtils extends JavaPlugin {
 
     public ScoreboardManager getScoreboardManager() {
         return scoreboardManager;
+    }
+
+    public DuelManager getDuelManager() {
+        return duelManager;
     }
 }

@@ -1,24 +1,58 @@
-name: ElementalSMP
+name: SurvivalUtils
 version: ${project.version}
-main: com.bloxelemental.elemental.ElementalSMP
+main: com.survivalutils.SurvivalUtils
 api-version: '1.21'
-author: BloxElementalTeam
-description: Blox Fruits inspired elemental mastery and awakening system for Paper SMPs.
+author: SurvivalUtilsTeam
+description: Homes, TPA, combat tagging/anti-escape, a settings GUI, and editable server rules.
 
 commands:
-  element:
-    description: Open the starter element selection GUI or view your abilities.
-    usage: /element <gui|abilities>
-  elemental:
-    description: Admin management for the elemental system.
-    usage: /elemental <inspect|setlevel|setelement|giveitem|announce|locate|reroll>
-    permission: elemental.admin
-    permission-message: You do not have permission to use elemental admin commands.
+  sethome:
+    description: Save a home at your current location.
+    usage: /sethome [name]
+  home:
+    description: Teleport to one of your homes.
+    usage: /home [name]
+  delhome:
+    description: Delete one of your homes.
+    usage: /delhome [name]
+  tpa:
+    description: Request to teleport to another player.
+    usage: /tpa <player>
+  tpaccept:
+    description: Accept an incoming teleport request.
+    usage: /tpaccept
+  tpdeny:
+    description: Deny an incoming teleport request.
+    usage: /tpdeny
+  settings:
+    description: Open your personal settings menu.
+    usage: /settings
+    aliases: [setting]
+  spawn:
+    description: Teleport to the world spawn.
+    usage: /spawn
+  rules:
+    description: View the server rules.
+    usage: /rules
+  "/rules":
+    description: Edit the server rules (OP only). Typed as //rules in chat.
+    usage: "//rules <add|remove|clear|set> [text]"
+    permission: survivalutils.rules.edit
+    permission-message: You do not have permission to edit the rules.
+  duel:
+    description: Challenge another player to a duel.
+    usage: /duel <player>
+  duelaccept:
+    description: Accept an incoming duel request.
+    usage: /duelaccept
+  dueldeny:
+    description: Deny an incoming duel request.
+    usage: /dueldeny
+  duelcancel:
+    description: Forfeit your active duel, or cancel a pending request.
+    usage: /duelcancel
 
 permissions:
-  elemental.admin:
-    description: Allows use of all /elemental admin subcommands.
+  survivalutils.rules.edit:
+    description: Allows editing the server rules with //rules.
     default: op
-  elemental.use:
-    description: Allows use of elemental abilities and the element selection GUI.
-    default: true

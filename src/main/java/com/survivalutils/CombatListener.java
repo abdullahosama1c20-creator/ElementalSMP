@@ -20,7 +20,7 @@ public class CombatListener implements Listener {
 
     /** Command labels (without the leading slash) blocked while a player is combat tagged. */
     private static final Set<String> BLOCKED_COMMANDS = Set.of(
-            "tpa", "tpaccept", "tpdeny", "home", "sethome", "spawn"
+            "tpa", "tpaccept", "tpdeny", "home", "sethome", "spawn", "duel", "duelaccept"
     );
 
     private final SurvivalUtils plugin;
