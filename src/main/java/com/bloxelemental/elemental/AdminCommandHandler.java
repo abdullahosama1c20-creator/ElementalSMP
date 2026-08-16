@@ -19,7 +19,7 @@ import java.util.UUID;
 
 public class AdminCommandHandler implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("inspect", "setlevel", "setelement", "giveitem", "announce");
+    private static final List<String> SUBCOMMANDS = List.of("inspect", "setlevel", "setelement", "giveitem", "announce", "locate", "reroll");
 
     private final ElementalSMP plugin;
 
@@ -45,6 +45,8 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
             case "setelement" -> handleSetElement(sender, args);
             case "giveitem" -> handleGiveItem(sender, args);
             case "announce" -> handleAnnounce(sender, args);
+            case "locate" -> handleLocate(sender);
+            case "reroll" -> handleReroll(sender);
             default -> sendUsage(sender);
         }
         return true;
@@ -57,6 +59,34 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("/elemental setelement <player> <element>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/elemental giveitem <player> <lightning_core|void_tear>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/elemental announce <message>", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/elemental locate", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/elemental reroll", NamedTextColor.YELLOW));
+    }
+
+    private void handleLocate(CommandSender sender) {
+        org.bukkit.Location center = plugin.getChamberManager().getChamberCenter();
+        if (center == null) {
+            sender.sendMessage(Component.text("No Elemental Chamber has spawned yet - it rolls within the first minute after the plugin starts.", NamedTextColor.RED));
+            return;
+        }
+        Element active = plugin.getChamberManager().getActiveElement();
+        sender.sendMessage(Component.text("Active Chamber: ", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
+                .append(Component.text(active.displayName() + " ", active.color()))
+                .append(Component.text(center.getWorld().getName() + " (" + center.getBlockX() + ", "
+                        + center.getBlockY() + ", " + center.getBlockZ() + ") radius " + plugin.getChamberManager().getRadius(),
+                        NamedTextColor.WHITE)));
+        sender.sendMessage(Component.text("Progress: " + plugin.getChamberManager().getKillsRegistered() + "/"
+                + plugin.getChamberManager().getKillsRequired() + " kills"
+                + (plugin.getChamberManager().isCleared() ? " (CLEARED)" : ""), NamedTextColor.GRAY));
+        if (sender instanceof Player player && player.getWorld().equals(center.getWorld())) {
+            double distance = player.getLocation().distance(center);
+            sender.sendMessage(Component.text(String.format("Distance from you: %.0f blocks", distance), NamedTextColor.GRAY));
+        }
+    }
+
+    private void handleReroll(CommandSender sender) {
+        plugin.getChamberManager().forceReroll();
+        sender.sendMessage(Component.text("Forced a new Elemental Chamber roll.", NamedTextColor.GREEN));
     }
 
     private void handleInspect(CommandSender sender, String[] args) {
@@ -150,7 +180,7 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
 
     private void handleGiveItem(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sender.sendMessage(Component.text("Usage: /elemental giveitem <player> <lightning_core|void_tear>", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Usage: /elemental giveitem <player> <lightning_core|void_tear|catalyst_<element>>", NamedTextColor.RED));
             return;
         }
         Player target = Bukkit.getPlayerExact(args[1]);
@@ -158,7 +188,8 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
             sender.sendMessage(Component.text("Player not found or offline.", NamedTextColor.RED));
             return;
         }
-        switch (args[2].toLowerCase()) {
+        String itemArg = args[2].toLowerCase();
+        switch (itemArg) {
             case "lightning_core" -> {
                 target.getInventory().addItem(AbilityListener.stormCoreItem());
                 sender.sendMessage(Component.text("Gave " + target.getName() + " a Storm Core.", NamedTextColor.GREEN));
@@ -169,7 +200,22 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Component.text("Gave " + target.getName() + " a Void Tear.", NamedTextColor.GREEN));
                 target.sendMessage(Component.text("You received a Void Tear!", NamedTextColor.YELLOW));
             }
-            default -> sender.sendMessage(Component.text("Unknown item. Valid: lightning_core, void_tear", NamedTextColor.RED));
+            default -> {
+                // catalyst_<element> lets an admin re-issue a lost/missing catalyst for any element,
+                // e.g. "catalyst_air", "catalyst_fire", "catalyst_void".
+                if (itemArg.startsWith("catalyst_")) {
+                    Element element = Element.fromArgument(itemArg.substring("catalyst_".length()));
+                    if (element == null) {
+                        sender.sendMessage(Component.text("Unknown element for catalyst_<element>.", NamedTextColor.RED));
+                        return;
+                    }
+                    target.getInventory().addItem(AbilityListener.catalystItem(plugin, element));
+                    sender.sendMessage(Component.text("Gave " + target.getName() + " a " + element.displayName() + " Catalyst.", NamedTextColor.GREEN));
+                    target.sendMessage(Component.text("You received a " + element.displayName() + " Catalyst!", NamedTextColor.YELLOW));
+                } else {
+                    sender.sendMessage(Component.text("Unknown item. Valid: lightning_core, void_tear, catalyst_<element>", NamedTextColor.RED));
+                }
+            }
         }
     }
 

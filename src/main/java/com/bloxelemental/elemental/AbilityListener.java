@@ -36,29 +36,15 @@ import java.util.UUID;
  */
 public class AbilityListener implements Listener {
 
-    private enum Tier {
-        BASIC(1, 3, "Basic Skill"),
-        MOBILITY(MasteryManager.MOBILITY_THRESHOLD, 8, "Mobility Skill"),
-        HEAVY(MasteryManager.HEAVY_THRESHOLD, 15, "Heavy Combat Skill"),
-        ULTIMATE(MasteryManager.ULTIMATE_THRESHOLD, 30, "Ultimate Skill");
-
-        final int requiredLevel;
-        final int cooldownSeconds;
-        final String label;
-
-        Tier(int requiredLevel, int cooldownSeconds, String label) {
-            this.requiredLevel = requiredLevel;
-            this.cooldownSeconds = cooldownSeconds;
-            this.label = label;
-        }
-    }
-
     private static NamespacedKey key(ElementalSMP plugin, String name) {
         return new NamespacedKey(plugin, name);
     }
 
     private final ElementalSMP plugin;
     private final Map<UUID, Map<String, Long>> cooldowns = new HashMap<>();
+    /** UUID -> timestamp (ms) up to which a pending awaken is confirmed by a second click. */
+    private final Map<UUID, Long> pendingAwakenConfirmations = new HashMap<>();
+    private static final long AWAKEN_CONFIRM_WINDOW_MS = 15_000L;
 
     public AbilityListener(ElementalSMP plugin) {
         this.plugin = plugin;
@@ -73,10 +59,19 @@ public class AbilityListener implements Listener {
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(element.displayName() + " Catalyst", element.color(), TextDecoration.BOLD));
         meta.lore(List.of(
-                Component.text("Right-click: Basic Skill", NamedTextColor.GRAY),
-                Component.text("Shift + Right-click: Mobility Skill", NamedTextColor.GRAY),
-                Component.text("Off-hand Right-click: Heavy Combat Skill", NamedTextColor.GRAY),
-                Component.text("Shift + Off-hand Right-click: Ultimate Skill", NamedTextColor.GRAY)
+                Component.text("Right-click ", NamedTextColor.GRAY)
+                        .append(Component.text("(Lv.1) Basic: ", NamedTextColor.WHITE, TextDecoration.BOLD))
+                        .append(Component.text(AbilityInfo.describe(element, Tier.BASIC), NamedTextColor.GRAY)),
+                Component.text("Shift+Right-click ", NamedTextColor.GRAY)
+                        .append(Component.text("(Lv.25) Mobility: ", NamedTextColor.WHITE, TextDecoration.BOLD))
+                        .append(Component.text(AbilityInfo.describe(element, Tier.MOBILITY), NamedTextColor.GRAY)),
+                Component.text("Off-hand click ", NamedTextColor.GRAY)
+                        .append(Component.text("(Lv.50) Heavy: ", NamedTextColor.WHITE, TextDecoration.BOLD))
+                        .append(Component.text(AbilityInfo.describe(element, Tier.HEAVY), NamedTextColor.GRAY)),
+                Component.text("Shift+Off-hand ", NamedTextColor.GRAY)
+                        .append(Component.text("(Lv.100) Ultimate: ", NamedTextColor.WHITE, TextDecoration.BOLD))
+                        .append(Component.text(AbilityInfo.describe(element, Tier.ULTIMATE), NamedTextColor.GRAY)),
+                Component.text("Run /element abilities for the full list.", NamedTextColor.DARK_GRAY)
         ));
         meta.getPersistentDataContainer().set(key(plugin, "elemental_catalyst"), PersistentDataType.BOOLEAN, true);
         meta.getPersistentDataContainer().set(key(plugin, "catalyst_element"), PersistentDataType.STRING, element.name());
@@ -145,17 +140,64 @@ public class AbilityListener implements Listener {
 
     private void handleAwakening(Player player, ItemStack item, Element target) {
         MasteryManager manager = plugin.getMasteryManager();
-        if (!manager.isAwakeningEligible(player.getUniqueId())) {
+        UUID uuid = player.getUniqueId();
+        if (!manager.isAwakeningEligible(uuid)) {
             player.sendMessage(Component.text("You need Mastery Level 100 on a starter element before you can awaken.", NamedTextColor.RED));
             return;
         }
+
+        long now = System.currentTimeMillis();
+        Long confirmBy = pendingAwakenConfirmations.get(uuid);
+        if (confirmBy == null || confirmBy < now) {
+            pendingAwakenConfirmations.put(uuid, now + AWAKEN_CONFIRM_WINDOW_MS);
+            Element current = manager.getElement(uuid);
+            player.sendMessage(Component.text("WARNING: ", NamedTextColor.RED, TextDecoration.BOLD)
+                    .append(Component.text("Awakening will PERMANENTLY replace your ", NamedTextColor.YELLOW))
+                    .append(Component.text(current != null ? current.displayName() : "current", current != null ? current.color() : NamedTextColor.WHITE))
+                    .append(Component.text(" element and reset your Mastery to Level 1. This cannot be undone by you.", NamedTextColor.YELLOW)));
+            player.sendMessage(Component.text("Right-click again within 15 seconds to confirm.", NamedTextColor.GRAY));
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0F, 0.7F);
+            return;
+        }
+        pendingAwakenConfirmations.remove(uuid);
+
+        Element previousElement = manager.getElement(uuid);
         item.setAmount(item.getAmount() - 1);
-        manager.awaken(player.getUniqueId(), target);
+        manager.awaken(uuid, target);
+
+        // Old element's catalyst no longer does anything - clear it out and hand over the new one
+        // so the player is never left without a working ability item.
+        removeCatalystsOfElement(player, previousElement);
+        player.getInventory().addItem(catalystItem(plugin, target));
+
         player.getWorld().spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1, 0), 120, 1, 1.5, 1, 0.05);
         player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0F, target == Element.VOID ? 0.5F : 1.5F);
         player.sendMessage(Component.text("You have awakened the element of ", NamedTextColor.LIGHT_PURPLE)
                 .append(Component.text(target.displayName(), target.color(), TextDecoration.BOLD))
                 .append(Component.text("!", NamedTextColor.LIGHT_PURPLE)));
+        player.sendMessage(Component.text("Your new " + target.displayName() + " Catalyst has been added to your inventory.", NamedTextColor.GRAY));
+    }
+
+    /**
+     * Removes every catalyst item bound to the given element from a player's
+     * inventory (used after awakening, since the old catalyst no longer works).
+     */
+    private void removeCatalystsOfElement(Player player, Element element) {
+        if (element == null) {
+            return;
+        }
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length; i++) {
+            ItemStack stack = contents[i];
+            if (stack == null || !stack.hasItemMeta()) {
+                continue;
+            }
+            String tag = stack.getItemMeta().getPersistentDataContainer()
+                    .get(key(plugin, "catalyst_element"), PersistentDataType.STRING);
+            if (element.name().equals(tag)) {
+                player.getInventory().setItem(i, null);
+            }
+        }
     }
 
     private void handleCatalystUse(Player player, ItemStack item, EquipmentSlot hand) {
@@ -247,6 +289,10 @@ public class AbilityListener implements Listener {
 
     /** Draws a rotating double-helix particle stream between two points. */
     private void helix(Location start, Vector direction, double length, Particle particle) {
+        helix(start, direction, length, particle, null);
+    }
+
+    private void helix(Location start, Vector direction, double length, Particle particle, Object data) {
         Vector normal = direction.clone().crossProduct(new Vector(0, 1, 0)).normalize();
         if (normal.lengthSquared() == 0) {
             normal = new Vector(1, 0, 0);
@@ -257,17 +303,30 @@ public class AbilityListener implements Listener {
             Location point = start.clone().add(direction.clone().multiply(d));
             point.add(normal.clone().multiply(Math.cos(angle) * 0.6));
             point.add(normal2.clone().multiply(Math.sin(angle) * 0.6));
-            point.getWorld().spawnParticle(particle, point, 1, 0, 0, 0, 0);
+            if (data != null) {
+                point.getWorld().spawnParticle(particle, point, 1, 0, 0, 0, 0, data);
+            } else {
+                point.getWorld().spawnParticle(particle, point, 1, 0, 0, 0, 0);
+            }
         }
     }
 
     private void sphereBurst(Location center, Particle particle, double radius) {
+        sphereBurst(center, particle, radius, null);
+    }
+
+    private void sphereBurst(Location center, Particle particle, double radius, Object data) {
         for (double phi = 0; phi < Math.PI; phi += Math.PI / 12) {
             for (double theta = 0; theta < 2 * Math.PI; theta += Math.PI / 12) {
                 double x = radius * Math.sin(phi) * Math.cos(theta);
                 double y = radius * Math.cos(phi);
                 double z = radius * Math.sin(phi) * Math.sin(theta);
-                center.getWorld().spawnParticle(particle, center.clone().add(x, y, z), 1, 0, 0, 0, 0);
+                Location point = center.clone().add(x, y, z);
+                if (data != null) {
+                    point.getWorld().spawnParticle(particle, point, 1, 0, 0, 0, 0, data);
+                } else {
+                    point.getWorld().spawnParticle(particle, point, 1, 0, 0, 0, 0);
+                }
             }
         }
     }
@@ -407,9 +466,10 @@ public class AbilityListener implements Listener {
     }
 
     private void castEarth(Player player, Location origin, Vector direction, Tier tier) {
+        Object stoneData = Material.STONE.createBlockData();
         switch (tier) {
             case BASIC -> {
-                helix(origin, direction, 6, Particle.BLOCK_CRUMBLE);
+                helix(origin, direction, 6, Particle.BLOCK_CRUMBLE, stoneData);
                 player.playSound(origin, Sound.BLOCK_STONE_BREAK, 1.0F, 0.8F);
                 for (LivingEntity target : nearbyTargets(player, 4)) {
                     if (isInFront(player, target)) {
@@ -419,7 +479,7 @@ public class AbilityListener implements Listener {
                 }
             }
             case MOBILITY -> {
-                sphereBurst(origin, Particle.BLOCK_CRUMBLE, 1.2);
+                sphereBurst(origin, Particle.BLOCK_CRUMBLE, 1.2, stoneData);
                 player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, 100, 2));
                 player.playSound(origin, Sound.BLOCK_STONE_STEP, 1.0F, 0.6F);
             }
@@ -433,7 +493,7 @@ public class AbilityListener implements Listener {
             }
             case ULTIMATE -> {
                 for (int i = 0; i < 3; i++) {
-                    sphereBurst(origin.clone().add(direction.clone().multiply(i * 3)), Particle.BLOCK_CRUMBLE, 2.0);
+                    sphereBurst(origin.clone().add(direction.clone().multiply(i * 3)), Particle.BLOCK_CRUMBLE, 2.0, stoneData);
                 }
                 player.playSound(origin, Sound.ENTITY_WITHER_BREAK_BLOCK, 1.0F, 0.7F);
                 for (LivingEntity target : nearbyTargets(player, 8)) {

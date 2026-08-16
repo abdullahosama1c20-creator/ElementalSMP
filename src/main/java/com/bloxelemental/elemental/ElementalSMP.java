@@ -7,7 +7,7 @@ public final class ElementalSMP extends JavaPlugin {
     private static ElementalSMP instance;
 
     private MasteryManager masteryManager;
-    private ZoneManager zoneManager;
+    private ChamberManager chamberManager;
 
     @Override
     public void onEnable() {
@@ -16,11 +16,12 @@ public final class ElementalSMP extends JavaPlugin {
         masteryManager = new MasteryManager(this);
         masteryManager.loadData();
 
-        zoneManager = new ZoneManager(this);
-        zoneManager.start();
+        chamberManager = new ChamberManager(this);
+        chamberManager.start();
 
         getServer().getPluginManager().registerEvents(new GUIListener(this), this);
         getServer().getPluginManager().registerEvents(new AbilityListener(this), this);
+        getServer().getPluginManager().registerEvents(new ChamberListener(this), this);
 
         getCommand("element").setExecutor(new ElementCommand(this));
         AdminCommandHandler adminHandler = new AdminCommandHandler(this);
@@ -35,8 +36,8 @@ public final class ElementalSMP extends JavaPlugin {
         if (masteryManager != null) {
             masteryManager.saveData();
         }
-        if (zoneManager != null) {
-            zoneManager.stop();
+        if (chamberManager != null) {
+            chamberManager.stop();
         }
         getLogger().info("ElementalSMP has been disabled.");
     }
@@ -49,7 +50,7 @@ public final class ElementalSMP extends JavaPlugin {
         return masteryManager;
     }
 
-    public ZoneManager getZoneManager() {
-        return zoneManager;
+    public ChamberManager getChamberManager() {
+        return chamberManager;
     }
 }

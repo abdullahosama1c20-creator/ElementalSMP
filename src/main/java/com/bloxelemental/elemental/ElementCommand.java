@@ -2,6 +2,7 @@ package com.bloxelemental.elemental;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -25,8 +26,18 @@ public class ElementCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length == 0 || !args[0].equalsIgnoreCase("gui")) {
-            player.sendMessage(Component.text("Usage: /element gui", NamedTextColor.YELLOW));
+        if (args.length == 0) {
+            player.sendMessage(Component.text("Usage: /element gui | /element abilities", NamedTextColor.YELLOW));
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("abilities")) {
+            handleAbilities(player);
+            return true;
+        }
+
+        if (!args[0].equalsIgnoreCase("gui")) {
+            player.sendMessage(Component.text("Usage: /element gui | /element abilities", NamedTextColor.YELLOW));
             return true;
         }
 
@@ -41,10 +52,30 @@ public class ElementCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private void handleAbilities(Player player) {
+        MasteryManager manager = plugin.getMasteryManager();
+        Element element = manager.getElement(player.getUniqueId());
+        if (element == null) {
+            player.sendMessage(Component.text("Choose an element with /element gui first.", NamedTextColor.RED));
+            return;
+        }
+        int level = manager.getLevel(player.getUniqueId());
+        player.sendMessage(Component.text("--- " + element.displayName() + " Abilities (Mastery Lv." + level + ") ---",
+                NamedTextColor.GOLD, TextDecoration.BOLD));
+        for (Tier tier : Tier.values()) {
+            boolean unlocked = level >= tier.requiredLevel;
+            NamedTextColor color = unlocked ? element.color() : NamedTextColor.DARK_GRAY;
+            String lockTag = unlocked ? "[UNLOCKED] " : "[Lv." + tier.requiredLevel + "] ";
+            player.sendMessage(Component.text(lockTag, unlocked ? NamedTextColor.GREEN : NamedTextColor.RED)
+                    .append(Component.text(tier.label + ": ", color, TextDecoration.BOLD))
+                    .append(Component.text(AbilityInfo.describe(element, tier), color)));
+        }
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return List.of("gui");
+            return List.of("gui", "abilities");
         }
         return List.of();
     }

@@ -120,8 +120,9 @@ public class MasteryManager {
 
     /**
      * Adds mastery XP to the given player's currently selected element, applying
-     * the wilderness zone bonus multiplier if applicable, then resolves any
-     * level-ups (and the ability unlocks that come with them).
+     * the elemental chamber bonus multiplier if the player is fighting inside
+     * the active chamber, then resolves any level-ups (and the ability unlocks
+     * that come with them).
      */
     public void addXP(Player player, double baseAmount) {
         UUID uuid = player.getUniqueId();
@@ -133,8 +134,12 @@ public class MasteryManager {
             return;
         }
 
-        boolean inZone = plugin.getZoneManager() != null && plugin.getZoneManager().isInZone(player.getLocation());
-        double amount = inZone ? baseAmount * 2.0D : baseAmount;
+        Element element = getElement(uuid);
+        double multiplier = plugin.getChamberManager() != null
+                ? plugin.getChamberManager().getBonusMultiplier(player.getLocation(), element)
+                : 1.0D;
+        double amount = baseAmount * multiplier;
+        boolean bonusApplied = multiplier > 1.0D;
 
         double xp = getXP(uuid) + amount;
 
@@ -153,8 +158,9 @@ public class MasteryManager {
         data.set(path(uuid, "xp"), xp);
         saveData();
 
-        if (inZone) {
-            player.sendActionBar(Component.text("+" + String.format("%.1f", amount) + " Mastery XP (2x Zone Bonus)", NamedTextColor.LIGHT_PURPLE));
+        if (bonusApplied) {
+            String label = multiplier >= 3.0D ? "3x Matching Chamber Bonus" : "1.5x Chamber Bonus";
+            player.sendActionBar(Component.text("+" + String.format("%.1f", amount) + " Mastery XP (" + label + ")", NamedTextColor.LIGHT_PURPLE));
         }
 
         if (leveledUp) {

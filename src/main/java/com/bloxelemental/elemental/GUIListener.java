@@ -113,8 +113,8 @@ public class GUIListener implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        if (plugin.getZoneManager() != null) {
-            plugin.getZoneManager().trackPlayer(event.getPlayer());
+        if (plugin.getChamberManager() != null) {
+            plugin.getChamberManager().trackPlayer(event.getPlayer());
         }
         if (!plugin.getMasteryManager().hasElement(event.getPlayer().getUniqueId())) {
             event.getPlayer().sendMessage(Component.text("Welcome! Run ", NamedTextColor.YELLOW)
@@ -125,8 +125,8 @@ public class GUIListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        if (plugin.getZoneManager() != null) {
-            plugin.getZoneManager().untrackPlayer(event.getPlayer());
+        if (plugin.getChamberManager() != null) {
+            plugin.getChamberManager().untrackPlayer(event.getPlayer());
         }
     }
 }
