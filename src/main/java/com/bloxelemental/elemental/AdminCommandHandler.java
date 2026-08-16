@@ -171,7 +171,15 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
             sender.sendMessage(Component.text("Unknown element. Valid: Fire, Water, Air, Earth, Lightning, Void", NamedTextColor.RED));
             return;
         }
+        Element previousElement = plugin.getMasteryManager().getElement(target.getUniqueId());
         plugin.getMasteryManager().setElement(target.getUniqueId(), element);
+
+        // Swap catalysts so the target isn't left holding a dead item or missing one entirely -
+        // same fix as the awakening flow, needed here too since admins can retarget elements freely.
+        AbilityListener.removeCatalystsOfElement(plugin, target, previousElement);
+        target.getInventory().addItem(AbilityListener.catalystItem(plugin, element));
+        PassiveInfo.applyBuffs(target, element);
+
         sender.sendMessage(Component.text("Forced " + target.getName() + "'s element to ", NamedTextColor.GREEN)
                 .append(Component.text(element.displayName(), element.color())));
         target.sendMessage(Component.text("An admin changed your element to ", NamedTextColor.YELLOW)

@@ -167,8 +167,9 @@ public class AbilityListener implements Listener {
 
         // Old element's catalyst no longer does anything - clear it out and hand over the new one
         // so the player is never left without a working ability item.
-        removeCatalystsOfElement(player, previousElement);
+        removeCatalystsOfElement(plugin, player, previousElement);
         player.getInventory().addItem(catalystItem(plugin, target));
+        PassiveInfo.applyBuffs(player, target);
 
         player.getWorld().spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1, 0), 120, 1, 1.5, 1, 0.05);
         player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0F, target == Element.VOID ? 0.5F : 1.5F);
@@ -180,9 +181,9 @@ public class AbilityListener implements Listener {
 
     /**
      * Removes every catalyst item bound to the given element from a player's
-     * inventory (used after awakening, since the old catalyst no longer works).
+     * inventory (used after an element change, since the old catalyst no longer works).
      */
-    private void removeCatalystsOfElement(Player player, Element element) {
+    public static void removeCatalystsOfElement(ElementalSMP plugin, Player player, Element element) {
         if (element == null) {
             return;
         }

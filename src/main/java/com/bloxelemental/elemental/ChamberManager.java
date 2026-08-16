@@ -87,11 +87,16 @@ public class ChamberManager {
 
         int x = random.nextInt(WORLD_BOUND * 2) - WORLD_BOUND;
         int z = random.nextInt(WORLD_BOUND * 2) - WORLD_BOUND;
-        int y = switch (theme.yPlacement()) {
+
+        // Vote result: chambers should spawn BOTH above and below ground, so each
+        // roll has a 50/50 chance of flipping the element's usual placement instead
+        // of always using the same depth every time.
+        ChamberTheme.YPlacement placement = random.nextBoolean() ? theme.yPlacement() : opposite(theme.yPlacement());
+        int y = switch (placement) {
             case UNDERGROUND_MID -> 35;
             case UNDERGROUND_DEEP -> 10;
             case SURFACE -> Math.max(world.getHighestBlockYAt(x, z) + 1, 64);
-            case SKY -> 200;
+            case SKY -> 190 + random.nextInt(40);
         };
 
         this.origin = new Location(world, x, y, z);
@@ -103,9 +108,11 @@ public class ChamberManager {
 
         build(theme);
 
-        Component title = Component.text("ELEMENTAL CHAMBER ", theme.element().color(), TextDecoration.BOLD)
-                .append(Component.text(theme.element().displayName() + " @ (" + x + ", " + y + ", " + z + ")", NamedTextColor.WHITE));
-        bossBar.name(title);
+        // Vote result: chambers spawn secretly across the world - no broadcast coordinates.
+        // Players have to explore to find one. Admins can still check /elemental locate.
+        Component title = Component.text("A CHAMBER STIRS ", theme.element().color(), TextDecoration.BOLD)
+                .append(Component.text("Somewhere in the world, a " + theme.element().displayName() + " Chamber has emerged...", NamedTextColor.WHITE));
+        bossBar.name(Component.text(theme.element().displayName() + " Chamber is active somewhere...", theme.element().color()));
         bossBar.progress(1.0F);
         bossBar.color(bossBarColorFor(theme.element()));
 
@@ -114,6 +121,14 @@ public class ChamberManager {
             player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_AMBIENT, 0.5F, 1.2F);
             player.sendMessage(title);
         }
+    }
+
+    private ChamberTheme.YPlacement opposite(ChamberTheme.YPlacement placement) {
+        return switch (placement) {
+            case UNDERGROUND_MID, UNDERGROUND_DEEP -> ChamberTheme.YPlacement.SURFACE;
+            case SURFACE -> ChamberTheme.YPlacement.UNDERGROUND_MID;
+            case SKY -> ChamberTheme.YPlacement.UNDERGROUND_MID;
+        };
     }
 
     private BossBar.Color bossBarColorFor(Element element) {

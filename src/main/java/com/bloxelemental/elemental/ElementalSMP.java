@@ -8,6 +8,7 @@ public final class ElementalSMP extends JavaPlugin {
 
     private MasteryManager masteryManager;
     private ChamberManager chamberManager;
+    private PassiveManager passiveManager;
 
     @Override
     public void onEnable() {
@@ -19,9 +20,13 @@ public final class ElementalSMP extends JavaPlugin {
         chamberManager = new ChamberManager(this);
         chamberManager.start();
 
+        passiveManager = new PassiveManager(this);
+        passiveManager.start();
+
         getServer().getPluginManager().registerEvents(new GUIListener(this), this);
         getServer().getPluginManager().registerEvents(new AbilityListener(this), this);
         getServer().getPluginManager().registerEvents(new ChamberListener(this), this);
+        getServer().getPluginManager().registerEvents(new PassiveListener(this), this);
 
         getCommand("element").setExecutor(new ElementCommand(this));
         AdminCommandHandler adminHandler = new AdminCommandHandler(this);
@@ -52,5 +57,9 @@ public final class ElementalSMP extends JavaPlugin {
 
     public ChamberManager getChamberManager() {
         return chamberManager;
+    }
+
+    public PassiveManager getPassiveManager() {
+        return passiveManager;
     }
 }

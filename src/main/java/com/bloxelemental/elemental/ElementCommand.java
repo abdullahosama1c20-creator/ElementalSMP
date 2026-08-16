@@ -32,7 +32,7 @@ public class ElementCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args[0].equalsIgnoreCase("abilities")) {
-            handleAbilities(player);
+            GUIListener.openAbilitiesGUI(plugin, player);
             return true;
         }
 
@@ -50,26 +50,6 @@ public class ElementCommand implements CommandExecutor, TabCompleter {
 
         GUIListener.openElementSelectionGUI(player);
         return true;
-    }
-
-    private void handleAbilities(Player player) {
-        MasteryManager manager = plugin.getMasteryManager();
-        Element element = manager.getElement(player.getUniqueId());
-        if (element == null) {
-            player.sendMessage(Component.text("Choose an element with /element gui first.", NamedTextColor.RED));
-            return;
-        }
-        int level = manager.getLevel(player.getUniqueId());
-        player.sendMessage(Component.text("--- " + element.displayName() + " Abilities (Mastery Lv." + level + ") ---",
-                NamedTextColor.GOLD, TextDecoration.BOLD));
-        for (Tier tier : Tier.values()) {
-            boolean unlocked = level >= tier.requiredLevel;
-            NamedTextColor color = unlocked ? element.color() : NamedTextColor.DARK_GRAY;
-            String lockTag = unlocked ? "[UNLOCKED] " : "[Lv." + tier.requiredLevel + "] ";
-            player.sendMessage(Component.text(lockTag, unlocked ? NamedTextColor.GREEN : NamedTextColor.RED)
-                    .append(Component.text(tier.label + ": ", color, TextDecoration.BOLD))
-                    .append(Component.text(AbilityInfo.describe(element, tier), color)));
-        }
     }
 
     @Override
