@@ -12,9 +12,14 @@ public final class SurvivalUtils extends JavaPlugin {
     private TeleportWarmupManager teleportWarmupManager;
     private ScoreboardManager scoreboardManager;
     private DuelManager duelManager;
+    private DuelStatsManager duelStatsManager;
+    private ElementalBridge elementalBridge;
+    private AfkManager afkManager;
 
     @Override
     public void onEnable() {
+        saveDefaultConfig();
+
         homeManager = new HomeManager(this);
         homeManager.load();
 
@@ -24,12 +29,21 @@ public final class SurvivalUtils extends JavaPlugin {
         rulesManager = new RulesManager(this);
         rulesManager.load();
 
-        combatManager = new CombatManager();
+        duelStatsManager = new DuelStatsManager(this);
+        duelStatsManager.load();
+
+        combatManager = new CombatManager(this);
         tpaManager = new TpaManager(this);
         duelManager = new DuelManager(this);
         teleportWarmupManager = new TeleportWarmupManager(this);
         scoreboardManager = new ScoreboardManager(this);
         scoreboardManager.start();
+
+        elementalBridge = new ElementalBridge();
+        elementalBridge.refresh();
+
+        afkManager = new AfkManager(this);
+        afkManager.start();
 
         getServer().getPluginManager().registerEvents(teleportWarmupManager, this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
@@ -37,6 +51,12 @@ public final class SurvivalUtils extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ChatVisibilityListener(this), this);
         getServer().getPluginManager().registerEvents(new JoinListener(this), this);
         getServer().getPluginManager().registerEvents(new DuelListener(this), this);
+        getServer().getPluginManager().registerEvents(new AfkListener(this), this);
+        getServer().getPluginManager().registerEvents(new SwapHandsSettingsListener(this), this);
+
+        // ElementalSMP might enable after us or not be installed at all - re-check
+        // shortly after startup so the bridge picks it up either way.
+        getServer().getScheduler().runTaskLater(this, () -> elementalBridge.refresh(), 40L);
 
         HomeCommands homeCommands = new HomeCommands(this);
         getCommand("sethome").setExecutor(homeCommands);
@@ -62,6 +82,8 @@ public final class SurvivalUtils extends JavaPlugin {
         getCommand("duelaccept").setExecutor(duelCommands);
         getCommand("dueldeny").setExecutor(duelCommands);
         getCommand("duelcancel").setExecutor(duelCommands);
+        getCommand("duelstats").setExecutor(duelCommands);
+        getCommand("dueltop").setExecutor(duelCommands);
 
         getLogger().info("SurvivalUtils has been enabled.");
     }
@@ -76,6 +98,9 @@ public final class SurvivalUtils extends JavaPlugin {
         }
         if (rulesManager != null) {
             rulesManager.save();
+        }
+        if (duelStatsManager != null) {
+            duelStatsManager.save();
         }
         getLogger().info("SurvivalUtils has been disabled.");
     }
@@ -110,5 +135,17 @@ public final class SurvivalUtils extends JavaPlugin {
 
     public DuelManager getDuelManager() {
         return duelManager;
+    }
+
+    public DuelStatsManager getDuelStatsManager() {
+        return duelStatsManager;
+    }
+
+    public ElementalBridge getElementalBridge() {
+        return elementalBridge;
+    }
+
+    public AfkManager getAfkManager() {
+        return afkManager;
     }
 }

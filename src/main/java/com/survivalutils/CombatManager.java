@@ -6,12 +6,15 @@ import java.util.UUID;
 
 public class CombatManager {
 
-    public static final long COMBAT_DURATION_MS = 15_000L;
-
+    private final long combatDurationMs;
     private final Map<UUID, Long> taggedUntil = new HashMap<>();
 
+    public CombatManager(SurvivalUtils plugin) {
+        this.combatDurationMs = plugin.getConfig().getLong("combat.tag-duration-seconds", 15L) * 1000L;
+    }
+
     public void tag(UUID uuid) {
-        taggedUntil.put(uuid, System.currentTimeMillis() + COMBAT_DURATION_MS);
+        taggedUntil.put(uuid, System.currentTimeMillis() + combatDurationMs);
     }
 
     public boolean isTagged(UUID uuid) {

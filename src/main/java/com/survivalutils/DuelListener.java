@@ -49,14 +49,29 @@ public class DuelListener implements Listener {
         if (opponent != null && opponent.isOnline()) {
             opponent.sendMessage(Component.text("You won the duel against " + player.getName() + "!", NamedTextColor.GREEN, TextDecoration.BOLD));
             opponent.playSound(opponent.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0F, 1.0F);
+            plugin.getDuelStatsManager().recordWin(opponentUuid);
+
+            // Cross-plugin bonus: if ElementalSMP is installed and both duelists share the
+            // same element, the winner gets extra Mastery XP for proving mastery head-to-head.
+            if (plugin.getElementalBridge().sameElement(opponentUuid, uuid)) {
+                plugin.getElementalBridge().grantBonusXp(opponent, 40.0);
+                opponent.sendMessage(Component.text("Bonus Mastery XP for beating a fellow " + plugin.getElementalBridge()
+                        .getElementInfo(uuid).map(ElementalBridge.ElementInfo::elementName).orElse("") + " user!", NamedTextColor.LIGHT_PURPLE));
+            }
         }
+        plugin.getDuelStatsManager().recordLoss(uuid);
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
         if (plugin.getDuelManager().isInDuel(uuid)) {
+            UUID opponentUuid = plugin.getDuelManager().getOpponent(uuid);
             plugin.getDuelManager().endDuel(uuid, event.getPlayer().getName() + " disconnected - you win by forfeit.");
+            plugin.getDuelStatsManager().recordLoss(uuid);
+            if (opponentUuid != null) {
+                plugin.getDuelStatsManager().recordWin(opponentUuid);
+            }
         }
         plugin.getDuelManager().clearPending(uuid);
     }

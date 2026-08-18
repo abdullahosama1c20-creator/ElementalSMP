@@ -44,6 +44,13 @@ public class ScoreboardManager {
         setLine(objective, line--, ChatColor.GRAY + "Combat: " + (plugin.getCombatManager().isTagged(player.getUniqueId())
                 ? ChatColor.RED + "TAGGED" : ChatColor.GREEN + "Safe"));
 
+        plugin.getElementalBridge().getElementInfo(player.getUniqueId()).ifPresent(info ->
+                setLine(objective, 3, ChatColor.GRAY + "Element: " + ChatColor.WHITE + info.elementName() + " Lv." + info.level()));
+
+        if (plugin.getAfkManager().isAfk(player.getUniqueId())) {
+            setLine(objective, 2, ChatColor.YELLOW + "AFK");
+        }
+
         player.setScoreboard(scoreboard);
     }
 

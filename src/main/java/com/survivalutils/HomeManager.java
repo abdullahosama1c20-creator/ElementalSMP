@@ -17,7 +17,7 @@ import java.util.logging.Level;
 public class HomeManager {
 
     public static final String DEFAULT_HOME = "home";
-    private static final int MAX_HOMES_PER_PLAYER = 10;
+    private final int maxHomesPerPlayer;
 
     private final SurvivalUtils plugin;
     private final File file;
@@ -26,6 +26,7 @@ public class HomeManager {
     public HomeManager(SurvivalUtils plugin) {
         this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "homes.yml");
+        this.maxHomesPerPlayer = plugin.getConfig().getInt("homes.max-per-player", 10);
     }
 
     public void load() {
@@ -59,10 +60,10 @@ public class HomeManager {
 
     public boolean setHome(UUID uuid, String name, Location location) {
         String normalized = name.toLowerCase(Locale.ROOT);
-        if (!data.contains("homes." + uuid) && getHomeNames(uuid).size() >= MAX_HOMES_PER_PLAYER) {
+        if (!data.contains("homes." + uuid) && getHomeNames(uuid).size() >= maxHomesPerPlayer) {
             return false;
         }
-        if (!getHomeNames(uuid).contains(normalized) && getHomeNames(uuid).size() >= MAX_HOMES_PER_PLAYER) {
+        if (!getHomeNames(uuid).contains(normalized) && getHomeNames(uuid).size() >= maxHomesPerPlayer) {
             return false;
         }
         data.set(path(uuid, normalized), serialize(location));

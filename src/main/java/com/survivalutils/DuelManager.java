@@ -22,11 +22,10 @@ import java.util.UUID;
  */
 public class DuelManager {
 
-    private static final long EXPIRY_SECONDS = 30L;
-
     private record PendingRequest(UUID requester, BukkitTask expiryTask) {
     }
 
+    private final long expirySeconds;
     private final SurvivalUtils plugin;
     private final Map<UUID, PendingRequest> pendingByTarget = new HashMap<>();
     /** Both directions stored so either participant can be looked up by UUID. */
@@ -34,6 +33,7 @@ public class DuelManager {
 
     public DuelManager(SurvivalUtils plugin) {
         this.plugin = plugin;
+        this.expirySeconds = plugin.getConfig().getLong("duel.expiry-seconds", 30L);
     }
 
     public boolean isInDuel(UUID uuid) {
@@ -60,11 +60,11 @@ public class DuelManager {
             if (requester.isOnline()) {
                 requester.sendMessage(Component.text("Your duel request to " + target.getName() + " expired.", NamedTextColor.RED));
             }
-        }, EXPIRY_SECONDS * 20L);
+        }, expirySeconds * 20L);
 
         pendingByTarget.put(target.getUniqueId(), new PendingRequest(requester.getUniqueId(), expiryTask));
 
-        requester.sendMessage(Component.text("Duel request sent to " + target.getName() + ". Expires in 30 seconds.", NamedTextColor.YELLOW));
+        requester.sendMessage(Component.text("Duel request sent to " + target.getName() + ". Expires in " + expirySeconds + " seconds.", NamedTextColor.YELLOW));
         target.sendMessage(Component.text(requester.getName() + " has challenged you to a duel! ", NamedTextColor.YELLOW)
                 .append(Component.text("/duelaccept", NamedTextColor.GREEN))
                 .append(Component.text(" | ", NamedTextColor.GRAY))

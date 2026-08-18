@@ -11,6 +11,7 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class DuelCommands implements CommandExecutor, TabCompleter {
 
@@ -31,9 +32,16 @@ public class DuelCommands implements CommandExecutor, TabCompleter {
             case "duel" -> handleDuel(player, args);
             case "duelaccept" -> plugin.getDuelManager().accept(player);
             case "dueldeny" -> plugin.getDuelManager().deny(player);
+            case "duelstats" -> handleStats(player, args);
+            case "dueltop" -> handleTop(player);
             case "duelcancel" -> {
                 if (plugin.getDuelManager().isInDuel(player.getUniqueId())) {
+                    UUID opponentUuid = plugin.getDuelManager().getOpponent(player.getUniqueId());
                     plugin.getDuelManager().endDuel(player.getUniqueId(), player.getName() + " forfeited.");
+                    plugin.getDuelStatsManager().recordLoss(player.getUniqueId());
+                    if (opponentUuid != null) {
+                        plugin.getDuelStatsManager().recordWin(opponentUuid);
+                    }
                     player.sendMessage(Component.text("You forfeited the duel.", NamedTextColor.YELLOW));
                 } else {
                     plugin.getDuelManager().clearPending(player.getUniqueId());
@@ -62,6 +70,46 @@ public class DuelCommands implements CommandExecutor, TabCompleter {
             return;
         }
         plugin.getDuelManager().sendRequest(player, target);
+    }
+
+    private void handleStats(Player player, String[] args) {
+        UUID target;
+        String label;
+        if (args.length > 0) {
+            org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(args[0]);
+            target = offline.getUniqueId();
+            label = offline.getName() != null ? offline.getName() : args[0];
+        } else {
+            target = player.getUniqueId();
+            label = player.getName();
+        }
+        int wins = plugin.getDuelStatsManager().getWins(target);
+        int losses = plugin.getDuelStatsManager().getLosses(target);
+        int total = wins + losses;
+        double winRate = total == 0 ? 0.0 : (wins * 100.0) / total;
+
+        player.sendMessage(Component.text("--- " + label + "'s Duel Record ---", NamedTextColor.GOLD));
+        player.sendMessage(Component.text("Wins: ", NamedTextColor.GRAY).append(Component.text(wins, NamedTextColor.GREEN)));
+        player.sendMessage(Component.text("Losses: ", NamedTextColor.GRAY).append(Component.text(losses, NamedTextColor.RED)));
+        player.sendMessage(Component.text("Win rate: ", NamedTextColor.GRAY).append(Component.text(String.format("%.0f%%", winRate), NamedTextColor.WHITE)));
+    }
+
+    private void handleTop(Player player) {
+        List<DuelStatsManager.DuelRecord> top = plugin.getDuelStatsManager().getTop(10);
+        player.sendMessage(Component.text("--- Duel Leaderboard ---", NamedTextColor.GOLD));
+        if (top.isEmpty()) {
+            player.sendMessage(Component.text("No duels recorded yet.", NamedTextColor.GRAY));
+            return;
+        }
+        int rank = 1;
+        for (DuelStatsManager.DuelRecord record : top) {
+            player.sendMessage(Component.text("#" + rank + " ", NamedTextColor.YELLOW)
+                    .append(Component.text(record.name() + " ", NamedTextColor.WHITE))
+                    .append(Component.text(record.wins() + "W", NamedTextColor.GREEN))
+                    .append(Component.text(" / ", NamedTextColor.GRAY))
+                    .append(Component.text(record.losses() + "L", NamedTextColor.RED)));
+            rank++;
+        }
     }
 
     @Override

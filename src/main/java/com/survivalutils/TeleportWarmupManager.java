@@ -18,15 +18,16 @@ import java.util.UUID;
 
 public class TeleportWarmupManager implements Listener {
 
-    private static final int WARMUP_SECONDS = 3;
     private static final double MOVE_CANCEL_THRESHOLD = 0.3D;
 
+    private final int warmupSeconds;
     private final SurvivalUtils plugin;
     private final Map<UUID, BukkitTask> pendingTasks = new HashMap<>();
     private final Map<UUID, Location> startLocations = new HashMap<>();
 
     public TeleportWarmupManager(SurvivalUtils plugin) {
         this.plugin = plugin;
+        this.warmupSeconds = plugin.getConfig().getInt("teleport.warmup-seconds", 3);
     }
 
     public boolean isPending(UUID uuid) {
@@ -43,7 +44,7 @@ public class TeleportWarmupManager implements Listener {
         cancel(uuid, null);
 
         startLocations.put(uuid, player.getLocation());
-        player.sendMessage(Component.text("Teleporting to " + destinationLabel + " in " + WARMUP_SECONDS + " seconds. Don't move!", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Teleporting to " + destinationLabel + " in " + warmupSeconds + " seconds. Don't move!", NamedTextColor.YELLOW));
 
         BukkitTask task = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             pendingTasks.remove(uuid);
@@ -51,7 +52,7 @@ public class TeleportWarmupManager implements Listener {
             if (player.isOnline()) {
                 onComplete.run();
             }
-        }, WARMUP_SECONDS * 20L);
+        }, warmupSeconds * 20L);
 
         pendingTasks.put(uuid, task);
     }

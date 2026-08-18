@@ -13,17 +13,17 @@ import java.util.UUID;
 
 public class TpaManager {
 
-    private static final long EXPIRY_SECONDS = 30L;
-
     private record PendingRequest(UUID requester, BukkitTask expiryTask) {
     }
 
+    private final long expirySeconds;
     private final SurvivalUtils plugin;
     /** Keyed by the target's UUID - the player who must /tpaccept or /tpdeny. */
     private final Map<UUID, PendingRequest> pendingByTarget = new HashMap<>();
 
     public TpaManager(SurvivalUtils plugin) {
         this.plugin = plugin;
+        this.expirySeconds = plugin.getConfig().getLong("tpa.expiry-seconds", 30L);
     }
 
     public boolean hasPendingRequestFor(UUID targetUuid) {
@@ -46,11 +46,11 @@ public class TpaManager {
             if (target.isOnline()) {
                 target.sendMessage(Component.text(requester.getName() + "'s teleport request expired.", NamedTextColor.GRAY));
             }
-        }, EXPIRY_SECONDS * 20L);
+        }, expirySeconds * 20L);
 
         pendingByTarget.put(target.getUniqueId(), new PendingRequest(requester.getUniqueId(), expiryTask));
 
-        requester.sendMessage(Component.text("Teleport request sent to " + target.getName() + ". Expires in 30 seconds.", NamedTextColor.YELLOW));
+        requester.sendMessage(Component.text("Teleport request sent to " + target.getName() + ". Expires in " + expirySeconds + " seconds.", NamedTextColor.YELLOW));
         target.sendMessage(Component.text(requester.getName() + " wants to teleport to you. ", NamedTextColor.YELLOW)
                 .append(Component.text("/tpaccept", NamedTextColor.GREEN))
                 .append(Component.text(" | ", NamedTextColor.GRAY))
