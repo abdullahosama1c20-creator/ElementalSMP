@@ -46,6 +46,7 @@ public class ChamberListener implements Listener {
 
         ChamberTheme theme = ChamberTheme.forElement(activeElement);
         living.getPersistentDataContainer().set(chamberMobKey, PersistentDataType.BOOLEAN, true);
+        living.getPersistentDataContainer().set(new NamespacedKey(plugin, "chamber_element"), PersistentDataType.STRING, activeElement.name());
         living.customName(Component.text(activeElement.displayName() + " Chamber Guardian", activeElement.color()));
         living.setCustomNameVisible(true);
 
@@ -54,6 +55,9 @@ public class ChamberListener implements Listener {
         living.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 20 * 60 * 10, 0, true, false));
 
         double bonusHealth = 4.0D + random.nextInt(6);
+        if (chamberManager.isElite()) {
+            bonusHealth *= 2;
+        }
         var maxHealthAttr = living.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
         if (maxHealthAttr != null) {
             maxHealthAttr.setBaseValue(maxHealthAttr.getBaseValue() + bonusHealth);
@@ -116,6 +120,9 @@ public class ChamberListener implements Listener {
             killer.sendMessage(Component.text("Your matching element grants bonus chamber loot!", NamedTextColor.LIGHT_PURPLE));
         }
 
-        chamberManager.registerKill(killer);
+        boolean justCleared = chamberManager.registerKill(killer);
+        if (justCleared) {
+            plugin.getMasteryManager().incrementChambersCleared(killerUuid);
+        }
     }
 }

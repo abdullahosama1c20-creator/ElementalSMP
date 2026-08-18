@@ -33,9 +33,14 @@ public class ChamberManager {
     private static final int SPAN = INTERIOR + 2;           // + 1 block wall on each side
     private static final int INTERIOR_HEIGHT = 5;
     private static final int HEIGHT_SPAN = INTERIOR_HEIGHT + 2; // + floor + ceiling
-    private static final long PERIOD_TICKS = 20L * 60L * 60L; // 60 minutes
     private static final int WORLD_BOUND = 5000;
-    private static final int KILLS_REQUIRED = 12;
+
+    private final long periodTicks;
+    private final double eliteChance;
+    private final int killsRequiredNormal;
+    private final int killsRequiredElite;
+    private final double awakeningChanceNormal;
+    private final double awakeningChanceElite;
 
     private final ElementalSMP plugin;
     private final Random random = new Random();
@@ -53,14 +58,22 @@ public class ChamberManager {
     private final List<Location> spawnerLocations = new ArrayList<>();
     private Location chestLocation;
     private int killsRegistered;
+    private int killsRequired;
     private boolean cleared;
+    private boolean elite;
 
     public ChamberManager(ElementalSMP plugin) {
         this.plugin = plugin;
+        this.periodTicks = 20L * 60L * plugin.getConfig().getLong("chambers.reroll-interval-minutes", 60L);
+        this.eliteChance = plugin.getConfig().getDouble("chambers.elite-chance", 0.25D);
+        this.killsRequiredNormal = plugin.getConfig().getInt("chambers.kills-required-normal", 12);
+        this.killsRequiredElite = plugin.getConfig().getInt("chambers.kills-required-elite", 20);
+        this.awakeningChanceNormal = plugin.getConfig().getDouble("chambers.awakening-drop-chance-normal", 0.08D);
+        this.awakeningChanceElite = plugin.getConfig().getDouble("chambers.awakening-drop-chance-elite", 0.20D);
     }
 
     public void start() {
-        task = Bukkit.getScheduler().runTaskTimer(plugin, this::rollNewChamber, 0L, PERIOD_TICKS);
+        task = Bukkit.getScheduler().runTaskTimer(plugin, this::rollNewChamber, 0L, periodTicks);
     }
 
     public void stop() {
@@ -105,14 +118,17 @@ public class ChamberManager {
         this.chestLocation = null;
         this.killsRegistered = 0;
         this.cleared = false;
+        this.elite = random.nextDouble() < eliteChance;
+        this.killsRequired = elite ? killsRequiredElite : killsRequiredNormal;
 
         build(theme);
 
         // Vote result: chambers spawn secretly across the world - no broadcast coordinates.
         // Players have to explore to find one. Admins can still check /elemental locate.
+        String elitePrefix = elite ? "ELITE " : "";
         Component title = Component.text("A CHAMBER STIRS ", theme.element().color(), TextDecoration.BOLD)
-                .append(Component.text("Somewhere in the world, a " + theme.element().displayName() + " Chamber has emerged...", NamedTextColor.WHITE));
-        bossBar.name(Component.text(theme.element().displayName() + " Chamber is active somewhere...", theme.element().color()));
+                .append(Component.text("Somewhere in the world, an " + elitePrefix + theme.element().displayName() + " Chamber has emerged...", NamedTextColor.WHITE));
+        bossBar.name(Component.text(elitePrefix + theme.element().displayName() + " Chamber is active somewhere...", theme.element().color()));
         bossBar.progress(1.0F);
         bossBar.color(bossBarColorFor(theme.element()));
 
@@ -194,9 +210,12 @@ public class ChamberManager {
         world.getBlockAt(baseX, baseY + 3, baseZ + SPAN / 2).setType(theme.lightMaterial());
         world.getBlockAt(baseX + SPAN - 1, baseY + 3, baseZ + SPAN / 2).setType(theme.lightMaterial());
 
-        // Spawners
+        // Spawners - Elite chambers get a third spawner for extra pressure.
         placeSpawner(world, baseX + 3, baseY + 1, baseZ + 5, theme);
         placeSpawner(world, baseX + 7, baseY + 1, baseZ + 5, theme);
+        if (elite) {
+            placeSpawner(world, baseX + SPAN / 2, baseY + 1, baseZ + 2, theme);
+        }
 
         // Chest alcove near the back wall (loot appears once the chamber is cleared)
         chestLocation = new Location(world, baseX + SPAN / 2, baseY + 1, baseZ + SPAN - 3);
@@ -273,11 +292,15 @@ public class ChamberManager {
     }
 
     public int getKillsRequired() {
-        return KILLS_REQUIRED;
+        return killsRequired;
     }
 
     public boolean isCleared() {
         return cleared;
+    }
+
+    public boolean isElite() {
+        return elite;
     }
 
     /**
@@ -290,8 +313,8 @@ public class ChamberManager {
             return false;
         }
         killsRegistered++;
-        if (killsRegistered < KILLS_REQUIRED) {
-            killer.sendActionBar(Component.text("Chamber progress: " + killsRegistered + "/" + KILLS_REQUIRED, NamedTextColor.LIGHT_PURPLE));
+        if (killsRegistered < killsRequired) {
+            killer.sendActionBar(Component.text("Chamber progress: " + killsRegistered + "/" + killsRequired, NamedTextColor.LIGHT_PURPLE));
             return false;
         }
         cleared = true;
@@ -315,8 +338,9 @@ public class ChamberManager {
             }
         }
 
+        String elitePrefix = elite ? "ELITE " : "";
         Component message = Component.text("The ", NamedTextColor.LIGHT_PURPLE)
-                .append(Component.text(activeTheme.element().displayName(), activeTheme.element().color(), TextDecoration.BOLD))
+                .append(Component.text(elitePrefix + activeTheme.element().displayName(), activeTheme.element().color(), TextDecoration.BOLD))
                 .append(Component.text(" Chamber has been cleared! A loot chest has appeared inside.", NamedTextColor.LIGHT_PURPLE));
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.sendMessage(message);
@@ -326,14 +350,23 @@ public class ChamberManager {
     }
 
     private void fillLoot(Chest chest, ChamberTheme theme) {
-        int itemCount = 3 + random.nextInt(3); // 3-5 stacks
+        int itemCount = elite ? 6 + random.nextInt(3) : 3 + random.nextInt(3); // more stacks in Elite chambers
         for (int i = 0; i < itemCount; i++) {
             Material material = theme.lootPool()[random.nextInt(theme.lootPool().length)];
             int amount = 1 + random.nextInt(3);
             chest.getBlockInventory().addItem(new ItemStack(material, amount));
         }
-        if (theme.rareLoot() != null && random.nextDouble() < 0.15D) {
+        // Elite chambers guarantee the theme's rare item; normal chambers get a 15% shot at it.
+        if (theme.rareLoot() != null && (elite || random.nextDouble() < 0.15D)) {
             chest.getBlockInventory().addItem(new ItemStack(theme.rareLoot(), 1));
+        }
+        // Every chamber clear has a small chance to award an awakening item, since
+        // they're otherwise only obtainable from an admin - this gives players a
+        // real path to unlocking Lightning or Void on their own.
+        double awakeningChance = elite ? awakeningChanceElite : awakeningChanceNormal;
+        if (random.nextDouble() < awakeningChance) {
+            ItemStack awakeningItem = random.nextBoolean() ? AbilityListener.stormCoreItem() : AbilityListener.voidTearItem();
+            chest.getBlockInventory().addItem(awakeningItem);
         }
     }
 

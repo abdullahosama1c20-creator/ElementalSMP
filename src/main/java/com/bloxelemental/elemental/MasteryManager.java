@@ -32,10 +32,14 @@ public class MasteryManager {
     private final ElementalSMP plugin;
     private final File dataFile;
     private FileConfiguration data;
+    private double xpBasePerLevel = 50.0D;
+    private double xpScalingPerLevel = 15.0D;
 
     public MasteryManager(ElementalSMP plugin) {
         this.plugin = plugin;
         this.dataFile = new File(plugin.getDataFolder(), "data.yml");
+        this.xpBasePerLevel = plugin.getConfig().getDouble("mastery.xp-base-per-level", 50.0D);
+        this.xpScalingPerLevel = plugin.getConfig().getDouble("mastery.xp-scaling-per-level", 15.0D);
     }
 
     public void loadData() {
@@ -115,7 +119,7 @@ public class MasteryManager {
      * XP required to advance from the given level to the next one.
      */
     public double xpForNextLevel(int level) {
-        return 50.0D + (level * 15.0D);
+        return xpBasePerLevel + (level * xpScalingPerLevel);
     }
 
     /**
@@ -233,5 +237,64 @@ public class MasteryManager {
         data.set(path(uuid, "level"), 1);
         data.set(path(uuid, "xp"), 0.0D);
         saveData();
+    }
+
+    // ---------------------------------------------------------------------
+    // Stats tracking (kills, chambers cleared) and leaderboards
+    // ---------------------------------------------------------------------
+
+    public void incrementKills(UUID uuid) {
+        data.set(path(uuid, "kills"), getKills(uuid) + 1);
+        saveData();
+    }
+
+    public int getKills(UUID uuid) {
+        return data.getInt(path(uuid, "kills"), 0);
+    }
+
+    public void incrementChambersCleared(UUID uuid) {
+        data.set(path(uuid, "chambersCleared"), getChambersCleared(uuid) + 1);
+        saveData();
+    }
+
+    public int getChambersCleared(UUID uuid) {
+        return data.getInt(path(uuid, "chambersCleared"), 0);
+    }
+
+    /** One row of a /elemental top leaderboard. */
+    public record LeaderboardEntry(UUID uuid, String name, Element element, int level, double xp) {
+    }
+
+    /**
+     * Returns the top players by Mastery level (ties broken by XP), optionally
+     * filtered to one element. Player names are resolved via Bukkit's offline
+     * player cache, so anyone who has ever joined the server will show up.
+     */
+    public List<LeaderboardEntry> getTopPlayers(Element filter, int limit) {
+        List<LeaderboardEntry> entries = new ArrayList<>();
+        if (!data.isConfigurationSection("players")) {
+            return entries;
+        }
+        for (String uuidString : data.getConfigurationSection("players").getKeys(false)) {
+            UUID uuid;
+            try {
+                uuid = UUID.fromString(uuidString);
+            } catch (IllegalArgumentException e) {
+                continue;
+            }
+            Element element = getElement(uuid);
+            if (element == null || (filter != null && element != filter)) {
+                continue;
+            }
+            String name = Bukkit.getOfflinePlayer(uuid).getName();
+            entries.add(new LeaderboardEntry(uuid, name != null ? name : uuidString.substring(0, 8), element, getLevel(uuid), getXP(uuid)));
+        }
+        entries.sort((a, b) -> {
+            if (b.level() != a.level()) {
+                return Integer.compare(b.level(), a.level());
+            }
+            return Double.compare(b.xp(), a.xp());
+        });
+        return entries.size() > limit ? entries.subList(0, limit) : entries;
     }
 }

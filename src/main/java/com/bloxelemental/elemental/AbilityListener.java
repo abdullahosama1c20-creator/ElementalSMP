@@ -57,6 +57,7 @@ public class AbilityListener implements Listener {
     public static ItemStack catalystItem(ElementalSMP plugin, Element element) {
         ItemStack item = new ItemStack(Material.NETHER_STAR);
         ItemMeta meta = item.getItemMeta();
+        meta.setItemModel(new NamespacedKey("elementalsmp", element.name().toLowerCase() + "_catalyst"));
         meta.displayName(Component.text(element.displayName() + " Catalyst", element.color(), TextDecoration.BOLD));
         meta.lore(List.of(
                 Component.text("Right-click ", NamedTextColor.GRAY)
@@ -168,7 +169,9 @@ public class AbilityListener implements Listener {
         // Old element's catalyst no longer does anything - clear it out and hand over the new one
         // so the player is never left without a working ability item.
         removeCatalystsOfElement(plugin, player, previousElement);
+        ArmorSets.removeArmorOfElement(plugin, player, previousElement);
         player.getInventory().addItem(catalystItem(plugin, target));
+        player.getInventory().addItem(ArmorSets.armorPieces(plugin, target));
         PassiveInfo.applyBuffs(player, target);
 
         player.getWorld().spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1, 0), 120, 1, 1.5, 1, 0.05);
@@ -353,7 +356,7 @@ public class AbilityListener implements Listener {
                 player.playSound(origin, Sound.ENTITY_BLAZE_SHOOT, 1.0F, 1.0F);
                 for (LivingEntity target : nearbyTargets(player, 4)) {
                     if (isInFront(player, target)) {
-                        target.damage(4.0, player);
+                        dealDamage(target, 4.0, player);
                         target.setFireTicks(60);
                     }
                 }
@@ -367,7 +370,7 @@ public class AbilityListener implements Listener {
                 sphereBurst(player.getLocation().add(0, 1, 0), Particle.LAVA, 2.5);
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0F, 0.8F);
                 for (LivingEntity target : nearbyTargets(player, 5)) {
-                    target.damage(10.0, player);
+                    dealDamage(target, 10.0, player);
                     target.setFireTicks(100);
                     target.setVelocity(target.getLocation().toVector().subtract(player.getLocation().toVector()).normalize().setY(0.4));
                 }
@@ -378,7 +381,7 @@ public class AbilityListener implements Listener {
                 }
                 player.playSound(origin, Sound.ENTITY_ENDER_DRAGON_SHOOT, 1.0F, 0.7F);
                 for (LivingEntity target : nearbyTargets(player, 8)) {
-                    target.damage(20.0, player);
+                    dealDamage(target, 20.0, player);
                     target.setFireTicks(200);
                 }
             }
@@ -393,7 +396,7 @@ public class AbilityListener implements Listener {
                 player.playSound(origin, Sound.ENTITY_FISHING_BOBBER_SPLASH, 1.0F, 1.0F);
                 for (LivingEntity target : nearbyTargets(player, 4)) {
                     if (isInFront(player, target)) {
-                        target.damage(3.0, player);
+                        dealDamage(target, 3.0, player);
                         target.setVelocity(direction.clone().multiply(1.2).setY(0.2));
                     }
                 }
@@ -408,7 +411,7 @@ public class AbilityListener implements Listener {
                 sphereBurst(player.getLocation().add(0, 1, 0), Particle.CLOUD, 2.5);
                 player.playSound(player.getLocation(), Sound.WEATHER_RAIN_ABOVE, 1.0F, 0.6F);
                 for (LivingEntity target : nearbyTargets(player, 5)) {
-                    target.damage(9.0, player);
+                    dealDamage(target, 9.0, player);
                     target.setVelocity(new Vector(0, 1.1, 0));
                 }
             }
@@ -418,7 +421,7 @@ public class AbilityListener implements Listener {
                 }
                 player.playSound(origin, Sound.ENTITY_ELDER_GUARDIAN_CURSE, 1.0F, 1.0F);
                 for (LivingEntity target : nearbyTargets(player, 8)) {
-                    target.damage(18.0, player);
+                    dealDamage(target, 18.0, player);
                     target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 100, 2));
                 }
             }
@@ -433,7 +436,7 @@ public class AbilityListener implements Listener {
                 player.playSound(origin, Sound.ENTITY_PHANTOM_FLAP, 1.0F, 1.4F);
                 for (LivingEntity target : nearbyTargets(player, 4)) {
                     if (isInFront(player, target)) {
-                        target.damage(3.0, player);
+                        dealDamage(target, 3.0, player);
                         target.setVelocity(direction.clone().multiply(1.5));
                     }
                 }
@@ -447,7 +450,7 @@ public class AbilityListener implements Listener {
                 sphereBurst(player.getLocation().add(0, 1, 0), Particle.EXPLOSION, 2.5);
                 player.playSound(player.getLocation(), Sound.ENTITY_BREEZE_WIND_BURST, 1.0F, 1.0F);
                 for (LivingEntity target : nearbyTargets(player, 5)) {
-                    target.damage(8.0, player);
+                    dealDamage(target, 8.0, player);
                     Vector push = target.getLocation().toVector().subtract(player.getLocation().toVector()).normalize().multiply(2.0);
                     target.setVelocity(push.setY(0.6));
                 }
@@ -458,7 +461,7 @@ public class AbilityListener implements Listener {
                 }
                 player.playSound(origin, Sound.ENTITY_ENDER_DRAGON_FLAP, 1.5F, 0.8F);
                 for (LivingEntity target : nearbyTargets(player, 8)) {
-                    target.damage(16.0, player);
+                    dealDamage(target, 16.0, player);
                     target.setVelocity(new Vector(0, 1.5, 0));
                 }
             }
@@ -474,7 +477,7 @@ public class AbilityListener implements Listener {
                 player.playSound(origin, Sound.BLOCK_STONE_BREAK, 1.0F, 0.8F);
                 for (LivingEntity target : nearbyTargets(player, 4)) {
                     if (isInFront(player, target)) {
-                        target.damage(4.0, player);
+                        dealDamage(target, 4.0, player);
                         target.setVelocity(new Vector(0, 0.5, 0));
                     }
                 }
@@ -488,7 +491,7 @@ public class AbilityListener implements Listener {
                 sphereBurst(player.getLocation().add(0, 1, 0), Particle.EXPLOSION, 2.5);
                 player.playSound(player.getLocation(), Sound.ENTITY_RAVAGER_ATTACK, 1.0F, 0.9F);
                 for (LivingEntity target : nearbyTargets(player, 5)) {
-                    target.damage(11.0, player);
+                    dealDamage(target, 11.0, player);
                     target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 3));
                 }
             }
@@ -498,7 +501,7 @@ public class AbilityListener implements Listener {
                 }
                 player.playSound(origin, Sound.ENTITY_WITHER_BREAK_BLOCK, 1.0F, 0.7F);
                 for (LivingEntity target : nearbyTargets(player, 8)) {
-                    target.damage(20.0, player);
+                    dealDamage(target, 20.0, player);
                     target.setVelocity(new Vector(0, 0.2, 0));
                 }
             }
@@ -513,7 +516,7 @@ public class AbilityListener implements Listener {
                 player.playSound(origin, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 0.6F, 1.4F);
                 for (LivingEntity target : nearbyTargets(player, 4)) {
                     if (isInFront(player, target)) {
-                        target.damage(5.0, player);
+                        dealDamage(target, 5.0, player);
                     }
                 }
             }
@@ -527,13 +530,13 @@ public class AbilityListener implements Listener {
                 sphereBurst(player.getLocation().add(0, 1, 0), Particle.ELECTRIC_SPARK, 2.5);
                 player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0F, 1.0F);
                 for (LivingEntity target : nearbyTargets(player, 5)) {
-                    target.damage(12.0, player);
+                    dealDamage(target, 12.0, player);
                     target.getWorld().strikeLightningEffect(target.getLocation());
                 }
             }
             case ULTIMATE -> {
                 for (LivingEntity target : nearbyTargets(player, 8)) {
-                    target.damage(22.0, player);
+                    dealDamage(target, 22.0, player);
                     target.getWorld().strikeLightningEffect(target.getLocation());
                 }
                 player.playSound(origin, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5F, 0.7F);
@@ -549,7 +552,7 @@ public class AbilityListener implements Listener {
                 player.playSound(origin, Sound.ENTITY_ENDERMAN_STARE, 0.6F, 1.0F);
                 for (LivingEntity target : nearbyTargets(player, 4)) {
                     if (isInFront(player, target)) {
-                        target.damage(5.0, player);
+                        dealDamage(target, 5.0, player);
                         target.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0));
                     }
                 }
@@ -564,7 +567,7 @@ public class AbilityListener implements Listener {
                 sphereBurst(player.getLocation().add(0, 1, 0), Particle.REVERSE_PORTAL, 2.5);
                 player.playSound(player.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 0.6F, 1.0F);
                 for (LivingEntity target : nearbyTargets(player, 5)) {
-                    target.damage(13.0, player);
+                    dealDamage(target, 13.0, player);
                     target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0));
                 }
             }
@@ -574,7 +577,7 @@ public class AbilityListener implements Listener {
                 }
                 player.playSound(origin, Sound.ENTITY_WARDEN_ROAR, 1.0F, 0.7F);
                 for (LivingEntity target : nearbyTargets(player, 8)) {
-                    target.damage(24.0, player);
+                    dealDamage(target, 24.0, player);
                     target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 1));
                 }
             }
@@ -585,6 +588,26 @@ public class AbilityListener implements Listener {
     private boolean isInFront(Player player, Entity target) {
         Vector toTarget = target.getLocation().toVector().subtract(player.getLocation().toVector()).normalize();
         return player.getLocation().getDirection().dot(toTarget) > 0.3;
+    }
+
+    /**
+     * Applies the elemental counter cycle on top of a base ability damage
+     * amount, then deals it. Chamber mobs count as having their chamber's
+     * element for this purpose; other mobs and elementless players are neutral.
+     */
+    private void dealDamage(LivingEntity target, double baseAmount, Player attacker) {
+        Element attackerElement = plugin.getMasteryManager().getElement(attacker.getUniqueId());
+        Element defenderElement = resolveElement(target);
+        double multiplier = ElementalCounters.damageMultiplier(attackerElement, defenderElement);
+        target.damage(baseAmount * multiplier, attacker);
+    }
+
+    private Element resolveElement(LivingEntity entity) {
+        if (entity instanceof Player p) {
+            return plugin.getMasteryManager().getElement(p.getUniqueId());
+        }
+        String tag = entity.getPersistentDataContainer().get(key(plugin, "chamber_element"), PersistentDataType.STRING);
+        return tag == null ? null : Element.fromArgument(tag);
     }
 
     // ---------------------------------------------------------------------
@@ -603,5 +626,6 @@ public class AbilityListener implements Listener {
         }
         double baseXp = event.getEntity() instanceof Player ? 50.0 : 10.0;
         manager.addXP(killer, baseXp);
+        manager.incrementKills(killer.getUniqueId());
     }
 }

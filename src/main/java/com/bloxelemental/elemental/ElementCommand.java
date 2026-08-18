@@ -27,7 +27,7 @@ public class ElementCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            player.sendMessage(Component.text("Usage: /element gui | /element abilities", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("Usage: /element gui | /element abilities | /element stats", NamedTextColor.YELLOW));
             return true;
         }
 
@@ -36,8 +36,13 @@ public class ElementCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args[0].equalsIgnoreCase("stats")) {
+            handleStats(player);
+            return true;
+        }
+
         if (!args[0].equalsIgnoreCase("gui")) {
-            player.sendMessage(Component.text("Usage: /element gui | /element abilities", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("Usage: /element gui | /element abilities | /element stats", NamedTextColor.YELLOW));
             return true;
         }
 
@@ -52,10 +57,36 @@ public class ElementCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private void handleStats(Player player) {
+        MasteryManager manager = plugin.getMasteryManager();
+        Element element = manager.getElement(player.getUniqueId());
+        if (element == null) {
+            player.sendMessage(Component.text("Choose an element with /element gui first.", NamedTextColor.RED));
+            return;
+        }
+        int level = manager.getLevel(player.getUniqueId());
+        double xp = manager.getXP(player.getUniqueId());
+        double xpNeeded = manager.xpForNextLevel(level);
+
+        player.sendMessage(Component.text("--- Your Stats ---", NamedTextColor.GOLD, TextDecoration.BOLD));
+        player.sendMessage(Component.text("Element: ", NamedTextColor.GRAY).append(Component.text(element.displayName(), element.color())));
+        player.sendMessage(Component.text("Mastery Level: ", NamedTextColor.GRAY).append(Component.text(level + "/" + MasteryManager.MAX_LEVEL, NamedTextColor.WHITE)));
+        if (level < MasteryManager.MAX_LEVEL) {
+            player.sendMessage(Component.text("XP to next level: ", NamedTextColor.GRAY)
+                    .append(Component.text(String.format("%.0f/%.0f", xp, xpNeeded), NamedTextColor.WHITE)));
+        }
+        player.sendMessage(Component.text("Kills: ", NamedTextColor.GRAY).append(Component.text(manager.getKills(player.getUniqueId()), NamedTextColor.WHITE)));
+        player.sendMessage(Component.text("Chambers Cleared: ", NamedTextColor.GRAY).append(Component.text(manager.getChambersCleared(player.getUniqueId()), NamedTextColor.WHITE)));
+        if (manager.isAwakeningEligible(player.getUniqueId())) {
+            player.sendMessage(Component.text("Awakening Eligible! ", NamedTextColor.LIGHT_PURPLE)
+                    .append(Component.text("Find a Storm Core or Void Tear.", NamedTextColor.GRAY)));
+        }
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return List.of("gui", "abilities");
+            return List.of("gui", "abilities", "stats");
         }
         return List.of();
     }

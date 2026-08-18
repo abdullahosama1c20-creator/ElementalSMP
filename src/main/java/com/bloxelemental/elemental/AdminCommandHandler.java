@@ -19,7 +19,7 @@ import java.util.UUID;
 
 public class AdminCommandHandler implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("inspect", "setlevel", "setelement", "giveitem", "announce", "locate", "reroll");
+    private static final List<String> SUBCOMMANDS = List.of("inspect", "setlevel", "setelement", "giveitem", "announce", "locate", "reroll", "top");
 
     private final ElementalSMP plugin;
 
@@ -29,6 +29,12 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        // /elemental top is public - everyone can check the leaderboard without elemental.admin.
+        if (args.length > 0 && args[0].equalsIgnoreCase("top")) {
+            handleTop(sender, args);
+            return true;
+        }
+
         if (!sender.hasPermission("elemental.admin")) {
             sender.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             return true;
@@ -52,6 +58,29 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private void handleTop(CommandSender sender, String[] args) {
+        Element filter = args.length > 1 ? Element.fromArgument(args[1]) : null;
+        if (args.length > 1 && filter == null) {
+            sender.sendMessage(Component.text("Unknown element. Valid: Fire, Water, Air, Earth, Lightning, Void", NamedTextColor.RED));
+            return;
+        }
+        List<MasteryManager.LeaderboardEntry> top = plugin.getMasteryManager().getTopPlayers(filter, 10);
+        sender.sendMessage(Component.text("--- Mastery Leaderboard" + (filter != null ? " (" + filter.displayName() + ")" : "") + " ---",
+                NamedTextColor.GOLD, TextDecoration.BOLD));
+        if (top.isEmpty()) {
+            sender.sendMessage(Component.text("No one has chosen an element yet.", NamedTextColor.GRAY));
+            return;
+        }
+        int rank = 1;
+        for (MasteryManager.LeaderboardEntry entry : top) {
+            sender.sendMessage(Component.text("#" + rank + " ", NamedTextColor.YELLOW)
+                    .append(Component.text(entry.name() + " ", NamedTextColor.WHITE))
+                    .append(Component.text("(" + entry.element().displayName() + ") ", entry.element().color()))
+                    .append(Component.text("Lv." + entry.level(), NamedTextColor.GRAY)));
+            rank++;
+        }
+    }
+
     private void sendUsage(CommandSender sender) {
         sender.sendMessage(Component.text("--- /elemental commands ---", NamedTextColor.GOLD, TextDecoration.BOLD));
         sender.sendMessage(Component.text("/elemental inspect <player>", NamedTextColor.YELLOW));
@@ -61,6 +90,7 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("/elemental announce <message>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/elemental locate", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/elemental reroll", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/elemental top [element]", NamedTextColor.YELLOW));
     }
 
     private void handleLocate(CommandSender sender) {
@@ -70,8 +100,9 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
             return;
         }
         Element active = plugin.getChamberManager().getActiveElement();
+        String elitePrefix = plugin.getChamberManager().isElite() ? "ELITE " : "";
         sender.sendMessage(Component.text("Active Chamber: ", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
-                .append(Component.text(active.displayName() + " ", active.color()))
+                .append(Component.text(elitePrefix + active.displayName() + " ", active.color()))
                 .append(Component.text(center.getWorld().getName() + " (" + center.getBlockX() + ", "
                         + center.getBlockY() + ", " + center.getBlockZ() + ") radius " + plugin.getChamberManager().getRadius(),
                         NamedTextColor.WHITE)));
@@ -177,7 +208,9 @@ public class AdminCommandHandler implements CommandExecutor, TabCompleter {
         // Swap catalysts so the target isn't left holding a dead item or missing one entirely -
         // same fix as the awakening flow, needed here too since admins can retarget elements freely.
         AbilityListener.removeCatalystsOfElement(plugin, target, previousElement);
+        ArmorSets.removeArmorOfElement(plugin, target, previousElement);
         target.getInventory().addItem(AbilityListener.catalystItem(plugin, element));
+        target.getInventory().addItem(ArmorSets.armorPieces(plugin, element));
         PassiveInfo.applyBuffs(target, element);
 
         sender.sendMessage(Component.text("Forced " + target.getName() + "'s element to ", NamedTextColor.GREEN)

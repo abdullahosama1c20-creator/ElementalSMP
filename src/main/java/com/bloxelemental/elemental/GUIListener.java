@@ -1,6 +1,5 @@
 package com.bloxelemental.elemental;
 
-import java.util.List;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -175,6 +174,7 @@ public class GUIListener implements Listener {
 
         plugin.getMasteryManager().setElement(player.getUniqueId(), chosen);
         player.getInventory().addItem(AbilityListener.catalystItem(plugin, chosen));
+        player.getInventory().addItem(ArmorSets.armorPieces(plugin, chosen));
         PassiveInfo.applyBuffs(player, chosen);
         player.closeInventory();
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0F, 1.2F);
@@ -182,6 +182,7 @@ public class GUIListener implements Listener {
                 .append(Component.text(chosen.displayName(), chosen.color(), TextDecoration.BOLD))
                 .append(Component.text("!", NamedTextColor.GREEN)));
         player.sendMessage(Component.text("Your Elemental Catalyst has been added to your inventory.", NamedTextColor.GRAY));
+        player.sendMessage(Component.text("A matching armor set was added too - wear the full set for a bonus.", NamedTextColor.GRAY));
     }
 
     @EventHandler

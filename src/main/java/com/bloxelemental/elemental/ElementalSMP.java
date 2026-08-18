@@ -14,6 +14,9 @@ public final class ElementalSMP extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
+        saveDefaultConfig();
+        Tier.applyConfig(getConfig().getConfigurationSection("cooldowns"));
+
         masteryManager = new MasteryManager(this);
         masteryManager.loadData();
 
@@ -27,6 +30,7 @@ public final class ElementalSMP extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new AbilityListener(this), this);
         getServer().getPluginManager().registerEvents(new ChamberListener(this), this);
         getServer().getPluginManager().registerEvents(new PassiveListener(this), this);
+        getServer().getPluginManager().registerEvents(new ElementalItemProtectionListener(this), this);
 
         getCommand("element").setExecutor(new ElementCommand(this));
         AdminCommandHandler adminHandler = new AdminCommandHandler(this);

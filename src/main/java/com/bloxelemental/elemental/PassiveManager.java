@@ -20,7 +20,15 @@ public class PassiveManager {
             Element element = plugin.getMasteryManager().getElement(player.getUniqueId());
             if (element != null) {
                 PassiveInfo.applyBuffs(player, element);
+                applySetBonus(player, element);
             }
+        }
+    }
+
+    private void applySetBonus(Player player, Element element) {
+        if (ArmorSets.hasFullSet(plugin, player, element)) {
+            player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                    org.bukkit.potion.PotionEffectType.ABSORPTION, 20 * 40, 0, true, false));
         }
     }
 }
