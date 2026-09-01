@@ -24,11 +24,14 @@ jobs:
         cache: 'maven'
 
     # Step 3: Compile and Package the JAR File using Maven
+    # We pass the exact JAVA_HOME executable paths to override the compiler-plugin restriction.
     - name: Build with Maven
-      run: mvn clean package --file pom.xml
+      run: |
+        mvn clean package --file pom.xml \
+          -Dmaven.compiler.fork=true \
+          -Dmaven.compiler.executable="$JAVA_HOME/bin/javac"
 
     # Step 4: Upload the Compiled Artifact to GitHub
-    # This stores your final ElementalSMP .jar file so you can download it from the Actions tab.
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
