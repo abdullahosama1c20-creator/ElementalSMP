@@ -1,26 +1,22 @@
-# ElementalSMP configuration
+# SurvivalUtils configuration
 # Edit these values, then run /reload or restart the server to apply them.
 
-chambers:
-  # How often (in minutes) a new Elemental Chamber rolls somewhere in the world.
-  reroll-interval-minutes: 60
-  # Chance (0.0-1.0) that a rolled chamber is an Elite chamber (tougher, better loot).
-  elite-chance: 0.25
-  # Mob kills required to clear a normal / Elite chamber.
-  kills-required-normal: 12
-  kills-required-elite: 20
-  # Chance (0.0-1.0) that clearing a chamber's chest includes a Storm Core or Void Tear.
-  awakening-drop-chance-normal: 0.08
-  awakening-drop-chance-elite: 0.20
+homes:
+  max-per-player: 10
 
-mastery:
-  # XP required to go from level N to N+1 is: xp-base-per-level + (N * xp-scaling-per-level)
-  xp-base-per-level: 50
-  xp-scaling-per-level: 15
+teleport:
+  # How long you must stand still (and take no damage) before /home, /tpa, or /spawn completes.
+  warmup-seconds: 3
 
-cooldowns:
-  # Ability cooldowns in seconds, per tier.
-  basic-seconds: 3
-  mobility-seconds: 8
-  heavy-seconds: 15
-  ultimate-seconds: 30
+tpa:
+  expiry-seconds: 30
+
+duel:
+  expiry-seconds: 30
+
+combat:
+  # How long a PvP hit tags both players for, blocking /home /tpa /spawn /duel etc.
+  tag-duration-seconds: 15
+
+afk:
+  threshold-minutes: 3
