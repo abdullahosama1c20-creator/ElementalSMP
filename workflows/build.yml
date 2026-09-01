@@ -15,32 +15,22 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # Step 2: Set up Java Environment (Adjust version based on target Minecraft API)
-    # Minecraft 1.20.6+ requires Java 21; 1.18+ requires Java 17; 1.16 requires Java 11.
-    - name: Set up JDK 21
+    # Step 2: Set up Java Environment targeting JDK 25
+    - name: Set up JDK 25
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '21'
-        cache: 'maven' # Change to 'gradle' if using Gradle
+        java-version: '25'
+        cache: 'maven'
 
-    # Step 3: Compile and Package the JAR File
-    # --- For Maven Projects ---
+    # Step 3: Compile and Package the JAR File using Maven
     - name: Build with Maven
       run: mvn clean package --file pom.xml
 
-    # --- ALTERNATIVE: For Gradle Projects (Uncomment if needed) ---
-    # - name: Setup Gradle
-    #   uses: gradle/actions/setup-gradle@v3
-    # - name: Build with Gradle
-    #   run: ./gradlew build
-
     # Step 4: Upload the Compiled Artifact to GitHub
-    # This stores the compiled plugin .jar file on GitHub so you can download it.
+    # This stores your final ElementalSMP .jar file so you can download it from the Actions tab.
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Compiled-Plugin
-        path: |
-          target/*.jar
-          build/libs/*.jar
+        name: ElementalSMP-Plugin
+        path: target/*.jar
