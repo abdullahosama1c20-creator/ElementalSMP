@@ -1,0 +1,46 @@
+name: Build and Package Minecraft Plugin
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Check out the repository source code
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # Step 2: Set up Java Environment (Adjust version based on target Minecraft API)
+    # Minecraft 1.20.6+ requires Java 21; 1.18+ requires Java 17; 1.16 requires Java 11.
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+        cache: 'maven' # Change to 'gradle' if using Gradle
+
+    # Step 3: Compile and Package the JAR File
+    # --- For Maven Projects ---
+    - name: Build with Maven
+      run: mvn clean package --file pom.xml
+
+    # --- ALTERNATIVE: For Gradle Projects (Uncomment if needed) ---
+    # - name: Setup Gradle
+    #   uses: gradle/actions/setup-gradle@v3
+    # - name: Build with Gradle
+    #   run: ./gradlew build
+
+    # Step 4: Upload the Compiled Artifact to GitHub
+    # This stores the compiled plugin .jar file on GitHub so you can download it.
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Compiled-Plugin
+        path: |
+          target/*.jar
+          build/libs/*.jar
